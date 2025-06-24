@@ -23,3 +23,11 @@ go run ./lsm/cmd/example
 
 Data files are written to `lsm/data` by default.
 
+## B-tree implementation
+
+The repository also contains a simple B-tree implementation under
+`btree/`. It supports insertion, search and deletion with optional
+persistence via gob files. A small storage engine wrapping the B-tree is
+provided to offer `Put`, `Get` and `Delete` operations similar to the
+LSM tree example.
+
