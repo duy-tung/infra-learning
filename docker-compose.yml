@@ -11,3 +11,37 @@ services:
       OTEL_SERVICE_NAME: go-api
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_EXPORTER_PROMETHEUS_PORT: 9464 # Prometheus metrics port
+      CLICKHOUSE_ENDPOINT: http://clickhouse:8123
+      CLICKHOUSE_DATABASE: otel
+      CLICKHOUSE_USERNAME: default
+      CLICKHOUSE_PASSWORD: secret
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: otel
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: secret
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.93.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./services/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+    environment:
+      CLICKHOUSE_ENDPOINT: http://clickhouse:8123
+      CLICKHOUSE_DATABASE: otel
+      CLICKHOUSE_USERNAME: default
+      CLICKHOUSE_PASSWORD: secret
+volumes:
+  clickhouse-data:
+networks:
+  default:
+    driver: bridge

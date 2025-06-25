@@ -84,3 +84,13 @@ go run ./services/go-api
 
 The service exposes Prometheus metrics on the configured port and histogram
 buckets are tuned so you can query p50, p90, p95 and p99 latencies.
+
+### Docker Compose
+
+All services can be started locally using `nerdctl`:
+
+```bash
+nerdctl compose up
+```
+
+This brings up the Go API, ClickHouse and the OpenTelemetry Collector configured in `docker-compose.yml`.
