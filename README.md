@@ -54,7 +54,7 @@ BenchmarkReadBTree-3    668    1665341 ns/op             0 B/op        0 allocs/
 ## HTTP API service
 
 Under `services/go-api` there is a small Gin-based HTTP API. It is
-instrumented using OpenTelemetry. When running the service you can
+instrumented using OpenTelemetry and exposes Prometheus metrics. When running the service you can
 configure tracing via environment variables:
 
 * `OTEL_EXPORTER_OTLP_ENDPOINT` – address of the OTLP HTTP trace exporter.
@@ -71,3 +71,6 @@ OTEL_SERVICE_VERSION=1.0.0 \
 OTEL_SAMPLER_RATIO=1 \
 go run ./services/go-api
 ```
+
+The service exposes a `/metrics` endpoint compatible with Prometheus. Histogram
+buckets are configured so you can query p50, p90, p95 and p99 latencies.
