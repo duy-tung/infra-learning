@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -57,10 +58,13 @@ func setupTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, error) 
 }
 
 func main() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
+
 	ctx := context.Background()
 	tp, err := setupTracerProvider(ctx)
 	if err != nil {
-		log.Fatalf("failed to setup tracer provider: %v", err)
+		log.Fatal().Err(err).Msg("failed to setup tracer provider")
 	}
 	defer func() { _ = tp.Shutdown(ctx) }()
 
@@ -68,6 +72,7 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(otelgin.Middleware(os.Getenv("OTEL_SERVICE_NAME")))
 	r.Use(MetricsMiddleware())
+	r.Use(LoggingMiddleware())
 
 	client := http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 
@@ -78,17 +83,20 @@ func main() {
 	})
 
 	r.GET("/example", func(c *gin.Context) {
+		logger := LoggerWithTrace(c.Request.Context())
 		req, _ := http.NewRequestWithContext(c.Request.Context(), "GET", "https://example.com", nil)
 		resp, err := client.Do(req)
 		if err != nil {
+			logger.Error().Err(err).Msg("failed to call example.com")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		resp.Body.Close()
+		logger.Info().Str("status", resp.Status).Msg("example.com response")
 		c.JSON(http.StatusOK, gin.H{"status": resp.Status})
 	})
 
 	if err := r.Run(); err != nil {
-		log.Fatalf("server error: %v", err)
+		log.Fatal().Err(err).Msg("server error")
 	}
 }
