@@ -97,7 +97,18 @@ func main() {
 
 	client := http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 
-	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	promPort := os.Getenv("OTEL_EXPORTER_PROMETHEUS_PORT")
+	if promPort == "" {
+		promPort = "9464"
+	}
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		addr := ":" + promPort
+		if err := http.ListenAndServe(addr, mux); err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("metrics server error")
+		}
+	}()
 
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})

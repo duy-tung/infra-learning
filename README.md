@@ -65,6 +65,7 @@ configure tracing via environment variables:
 * `OTEL_SERVICE_VERSION` – optional version tag.
 * `OTEL_SAMPLER_RATIO` – sampling ratio between `0` and `1`.
 * `OTEL_CUSTOM_TAGS` – comma separated custom span tags (`key=value`).
+* `OTEL_EXPORTER_PROMETHEUS_PORT` – port where metrics are exposed (defaults to `9464`).
 
 Example:
 
@@ -77,8 +78,9 @@ OTEL_SERVICE_NAME=go-api \
 OTEL_SERVICE_VERSION=1.0.0 \
 OTEL_SAMPLER_RATIO=1 \
 OTEL_CUSTOM_TAGS=env=dev,team=infra \
+OTEL_EXPORTER_PROMETHEUS_PORT=9464 \
 go run ./services/go-api
 ```
 
-The service exposes a `/metrics` endpoint compatible with Prometheus. Histogram
-buckets are configured so you can query p50, p90, p95 and p99 latencies.
+The service exposes Prometheus metrics on the configured port and histogram
+buckets are tuned so you can query p50, p90, p95 and p99 latencies.

@@ -10,4 +10,4 @@ services:
     environment:
       OTEL_SERVICE_NAME: go-api
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
-      OTEL_EXPORTER_PROMETHEUS_PORT: 9464
+      OTEL_EXPORTER_PROMETHEUS_PORT: 9464 # Prometheus metrics port
