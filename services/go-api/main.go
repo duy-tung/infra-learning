@@ -5,26 +5,34 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/clickhouseexporter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
 func setupTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	exporter, err := otlptracehttp.New(ctx,
-		otlptracehttp.WithEndpoint(endpoint),
-		otlptracehttp.WithInsecure(),
-	)
+	cfg := clickhouseexporter.NewFactory().CreateDefaultConfig().(*clickhouseexporter.Config)
+	cfg.Endpoint = os.Getenv("CLICKHOUSE_ENDPOINT")
+	if db := os.Getenv("CLICKHOUSE_DATABASE"); db != "" {
+		cfg.Database = db
+	}
+	cfg.Username = os.Getenv("CLICKHOUSE_USERNAME")
+	if pw := os.Getenv("CLICKHOUSE_PASSWORD"); pw != "" {
+		cfg.Password = configopaque.String(pw)
+	}
+	chExporter, err := newClickhouseSpanExporter(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -49,12 +57,25 @@ func setupTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, error) 
 		return nil, err
 	}
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
+		sdktrace.WithBatcher(chExporter),
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(ratio))),
 		sdktrace.WithResource(res),
 	)
 	otel.SetTracerProvider(tp)
 	return tp, nil
+}
+
+func parseCustomTags() []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	if tags := os.Getenv("OTEL_CUSTOM_TAGS"); tags != "" {
+		for _, p := range strings.Split(tags, ",") {
+			kv := strings.SplitN(strings.TrimSpace(p), "=", 2)
+			if len(kv) == 2 {
+				attrs = append(attrs, attribute.String(kv[0], kv[1]))
+			}
+		}
+	}
+	return attrs
 }
 
 func main() {
@@ -83,8 +104,21 @@ func main() {
 	})
 
 	r.GET("/example", func(c *gin.Context) {
-		logger := LoggerWithTrace(c.Request.Context())
-		req, _ := http.NewRequestWithContext(c.Request.Context(), "GET", "https://example.com", nil)
+		serviceName := os.Getenv("OTEL_SERVICE_NAME")
+		if serviceName == "" {
+			serviceName = "go-api"
+		}
+		attrs := []attribute.KeyValue{
+			semconv.ServiceNameKey.String(serviceName),
+			attribute.String("operation", "example"),
+		}
+		attrs = append(attrs, parseCustomTags()...)
+		ctx, span := otel.Tracer("example").Start(c.Request.Context(), "example")
+		span.SetAttributes(attrs...)
+		defer span.End()
+
+		logger := LoggerWithTrace(ctx)
+		req, _ := http.NewRequestWithContext(ctx, "GET", "https://example.com", nil)
 		resp, err := client.Do(req)
 		if err != nil {
 			logger.Error().Err(err).Msg("failed to call example.com")

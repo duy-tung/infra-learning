@@ -57,18 +57,26 @@ Under `services/go-api` there is a small Gin-based HTTP API. It is
 instrumented using OpenTelemetry and exposes Prometheus metrics. When running the service you can
 configure tracing via environment variables:
 
-* `OTEL_EXPORTER_OTLP_ENDPOINT` – address of the OTLP HTTP trace exporter.
+* `CLICKHOUSE_ENDPOINT` – ClickHouse connection endpoint.
+* `CLICKHOUSE_DATABASE` – database name.
+* `CLICKHOUSE_USERNAME` – authentication username.
+* `CLICKHOUSE_PASSWORD` – authentication password.
 * `OTEL_SERVICE_NAME` – service name (defaults to `go-api`).
 * `OTEL_SERVICE_VERSION` – optional version tag.
 * `OTEL_SAMPLER_RATIO` – sampling ratio between `0` and `1`.
+* `OTEL_CUSTOM_TAGS` – comma separated custom span tags (`key=value`).
 
 Example:
 
 ```bash
-OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318 \
+CLICKHOUSE_ENDPOINT=http://clickhouse:8123 \
+CLICKHOUSE_DATABASE=otel \
+CLICKHOUSE_USERNAME=default \
+CLICKHOUSE_PASSWORD=secret \
 OTEL_SERVICE_NAME=go-api \
 OTEL_SERVICE_VERSION=1.0.0 \
 OTEL_SAMPLER_RATIO=1 \
+OTEL_CUSTOM_TAGS=env=dev,team=infra \
 go run ./services/go-api
 ```
 
