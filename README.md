@@ -50,3 +50,24 @@ BenchmarkWriteBTree-3     1  28951579208 ns/op  13945980560 B/op  50513455 alloc
 BenchmarkReadLSM-3        1  1012496209 ns/op    561200192 B/op  12894572 allocs/op
 BenchmarkReadBTree-3    668    1665341 ns/op             0 B/op        0 allocs/op
 ```
+
+## HTTP API service
+
+Under `services/go-api` there is a small Gin-based HTTP API. It is
+instrumented using OpenTelemetry. When running the service you can
+configure tracing via environment variables:
+
+* `OTEL_EXPORTER_OTLP_ENDPOINT` – address of the OTLP HTTP trace exporter.
+* `OTEL_SERVICE_NAME` – service name (defaults to `go-api`).
+* `OTEL_SERVICE_VERSION` – optional version tag.
+* `OTEL_SAMPLER_RATIO` – sampling ratio between `0` and `1`.
+
+Example:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4318 \
+OTEL_SERVICE_NAME=go-api \
+OTEL_SERVICE_VERSION=1.0.0 \
+OTEL_SAMPLER_RATIO=1 \
+go run ./services/go-api
+```
