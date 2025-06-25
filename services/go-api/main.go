@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -66,8 +67,11 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(otelgin.Middleware(os.Getenv("OTEL_SERVICE_NAME")))
+	r.Use(MetricsMiddleware())
 
 	client := http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
