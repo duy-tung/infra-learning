@@ -65,6 +65,7 @@ configure tracing via environment variables:
 * `OTEL_SERVICE_VERSION` – optional version tag.
 * `OTEL_SAMPLER_RATIO` – sampling ratio between `0` and `1`.
 * `OTEL_CUSTOM_TAGS` – comma separated custom span tags (`key=value`).
+* `OTEL_EXPORTER_PROMETHEUS_PORT` – port to expose Prometheus metrics (defaults to `9464`).
 
 Example:
 
@@ -77,6 +78,7 @@ OTEL_SERVICE_NAME=go-api \
 OTEL_SERVICE_VERSION=1.0.0 \
 OTEL_SAMPLER_RATIO=1 \
 OTEL_CUSTOM_TAGS=env=dev,team=infra \
+OTEL_EXPORTER_PROMETHEUS_PORT=9464 \
 go run ./services/go-api
 ```
 
@@ -92,3 +94,4 @@ nerdctl compose up
 ```
 
 This brings up the Go API, ClickHouse and the OpenTelemetry Collector configured in `docker-compose.yml`.
+The Go API exposes metrics on the port defined by `OTEL_EXPORTER_PROMETHEUS_PORT` (mapped to `9464` by default).

@@ -95,6 +95,16 @@ func main() {
 	r.Use(MetricsMiddleware())
 	r.Use(LoggingMiddleware())
 
+	metricsPort := os.Getenv("OTEL_EXPORTER_PROMETHEUS_PORT")
+	if metricsPort == "" {
+		metricsPort = "9464"
+	}
+	go func() {
+		if err := http.ListenAndServe(":"+metricsPort, promhttp.Handler()); err != nil {
+			log.Fatal().Err(err).Msg("metrics server error")
+		}
+	}()
+
 	client := http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
 
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
