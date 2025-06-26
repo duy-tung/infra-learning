@@ -1,49 +1,104 @@
-# infra-learning
+# Infrastructure Learning Repository
 
-This repository contains learning experiments for infrastructure concepts.
+This repository contains clean, educational implementations of fundamental data structures used in modern databases and storage systems. The implementations are designed for learning with simple examples and clear documentation.
 
-## Go LSM Tree example
+## 📚 Learning Objectives
 
-Under `lsm/` you will find a simple Log Structured Merge (LSM) tree
-implementation written in Go. It is composed of the following packages:
+By exploring this repository, you will learn:
 
-* `memtable` – in-memory key/value store with flush support.
-* `bloom` – very small Bloom filter implementation.
-* `sstable` – read/write sorted string tables backed by text files.
-* `lsmtree` – coordinates a memtable and a set of SSTables.
-* `cmd/example` – example program exercising the tree.
+- **LSM Trees**: How write-optimized storage systems work (used in Cassandra, RocksDB, LevelDB)
+- **B-Trees**: How traditional database indexes work (used in MySQL, PostgreSQL, SQLite)
+- **Trade-offs**: When to use each data structure based on workload patterns
+- **Implementation details**: Practical considerations for building storage systems
 
-### Build and run
+## 🌳 LSM Tree Implementation
 
-From the repository root run:
+The `lsm/` directory contains a unified LSM tree implementation with optional advanced features:
 
-```bash
-go run ./lsm/cmd/example
-```
+### Core Components
+* **`memtable`** – In-memory buffer for recent writes (sorted map)
+* **`bloom`** – Bloom filter implementations for efficient lookups
+* **`sstable`** – Immutable sorted files on disk with Bloom filters
+* **`lsmtree`** – Unified LSM tree with optional compaction strategies and statistics
+* **`compaction`** – Multiple compaction strategies (Size-Tiered, Leveled, Time-Based)
 
-Data files are written to `lsm/data` by default.
+### Features
+- **Basic Operations**: Put, Get, Compact with clear explanations
+- **Optional Advanced Features**: Statistics tracking and pluggable compaction strategies
+- **Bloom Filters**: Efficient false-positive filtering for disk reads
+- **Persistence**: Automatic loading of existing SSTables on startup
 
-## B-tree implementation
-
-The repository also contains a simple B-tree implementation under
-`btree/`. It supports insertion, search and deletion with optional
-persistence via gob files. A small storage engine wrapping the B-tree is
-provided to offer `Put`, `Get` and `Delete` operations similar to the
-LSM tree example.
-
-
-## Benchmarks
-
-A small benchmark under `benchmark/` compares read and write performance
-between the LSM tree and B-tree using the same randomly generated data set.
-Run it with:
+### Quick Start
 
 ```bash
-go test -bench . -benchmem ./benchmark
+# Simple demo - basic operations
+cd lsm && go run ./cmd/demo
+
+# Comprehensive example - all features including compaction strategies
+cd lsm && go run ./cmd/example
+
+# Run tests
+cd lsm && go test ./lsmtree
 ```
 
-Results on a sample run:
+**Key files created**: SSTables in data directories (automatically cleaned up in demos)
 
+## 🌲 B-Tree Implementation
+
+The `btree/` directory contains a clean B-tree implementation with persistence:
+
+### Core Components
+* **`btree.go`** – Core B-tree with insert, search, delete operations
+* **`engine.go`** – Storage engine wrapper providing Put/Get/Delete interface
+* **Persistence** – Automatic saving/loading using Go's gob encoding
+
+### Features
+- **Basic Operations**: Insert, Search, Delete with automatic balancing
+- **Multiple Orders**: Support for different B-tree orders (branching factors)
+- **Persistence**: Data survives program restarts via disk storage
+- **Engine Interface**: Simple Put/Get/Delete API for easy integration
+
+### Quick Start
+
+```bash
+# Simple demo - basic operations
+cd btree && go run ./cmd/demo
+
+# Comprehensive example - all features including persistence and performance
+cd btree && go run ./cmd/example
+
+# Run tests
+cd btree && go test
+```
+
+**Key files created**: `.gob` files for persistence (automatically cleaned up in demos)
+
+## ⚡ Performance Comparison & Benchmarks
+
+The `benchmark/` directory contains comprehensive performance tests and integration tests:
+
+### Running Benchmarks
+```bash
+# Performance benchmarks
+cd benchmark && go test -bench . -benchmem
+
+# Integration tests
+cd benchmark && go test -v
+```
+
+### Expected Performance Characteristics
+
+**LSM Trees excel at:**
+- High write throughput (writes go to memory first)
+- Write-heavy workloads
+- Time-series data and logging systems
+
+**B-Trees excel at:**
+- Fast point lookups (balanced tree structure)
+- Read-heavy workloads
+- Range queries and sorted iteration
+
+### Sample Benchmark Results
 ```
 BenchmarkWriteLSM-3     121      8770492 ns/op      3105421 B/op    40414 allocs/op
 BenchmarkWriteBTree-3     1  28951579208 ns/op  13945980560 B/op  50513455 allocs/op
@@ -51,47 +106,81 @@ BenchmarkReadLSM-3        1  1012496209 ns/op    561200192 B/op  12894572 allocs
 BenchmarkReadBTree-3    668    1665341 ns/op             0 B/op        0 allocs/op
 ```
 
-## HTTP API service
+**Key takeaways:**
+- LSM trees are ~3000x faster for writes (buffered in memory)
+- B-trees are ~600x faster for reads (direct tree traversal)
+- Choose based on your read/write ratio and consistency requirements
 
-Under `services/go-api` there is a small Gin-based HTTP API. It is
-instrumented using OpenTelemetry and exposes Prometheus metrics. When running the service you can
-configure tracing via environment variables:
+## 🧪 Testing Your Understanding
 
-* `CLICKHOUSE_ENDPOINT` – ClickHouse connection endpoint.
-* `CLICKHOUSE_DATABASE` – database name.
-* `CLICKHOUSE_USERNAME` – authentication username.
-* `CLICKHOUSE_PASSWORD` – authentication password.
-* `OTEL_SERVICE_NAME` – service name (defaults to `go-api`).
-* `OTEL_SERVICE_VERSION` – optional version tag.
-* `OTEL_SAMPLER_RATIO` – sampling ratio between `0` and `1`.
-* `OTEL_CUSTOM_TAGS` – comma separated custom span tags (`key=value`).
-* `OTEL_EXPORTER_PROMETHEUS_PORT` – port to expose Prometheus metrics (defaults to `9464`).
+After running the comprehensive examples, try these exercises to deepen your understanding:
 
-Example:
+### LSM Tree Exercises
+1. **Modify compaction strategies** in the enhanced LSM demo and observe their effects
+2. **Experiment with Bloom filter parameters** and measure false positive rates
+3. **Add more data** after compaction and see how the system handles mixed old/new data
+4. **Implement a simple range query** that reads multiple consecutive keys
+5. **Compare performance** with different memtable thresholds
 
-```bash
-CLICKHOUSE_ENDPOINT=http://clickhouse:8123 \
-CLICKHOUSE_DATABASE=otel \
-CLICKHOUSE_USERNAME=default \
-CLICKHOUSE_PASSWORD=secret \
-OTEL_SERVICE_NAME=go-api \
-OTEL_SERVICE_VERSION=1.0.0 \
-OTEL_SAMPLER_RATIO=1 \
-OTEL_CUSTOM_TAGS=env=dev,team=infra \
-OTEL_EXPORTER_PROMETHEUS_PORT=9464 \
-go run ./services/go-api
-```
+### B-Tree Exercises
+1. **Change the B-tree order** and observe how it affects tree height and performance
+2. **Implement range scans** that return all keys between two values
+3. **Add timing measurements** to compare search performance with different orders
+4. **Test with different data patterns** (sequential vs random insertions)
+5. **Analyze memory usage** patterns with different tree configurations
 
-The service exposes a `/metrics` endpoint compatible with Prometheus. Histogram
-buckets are configured so you can query p50, p90, p95 and p99 latencies.
+### Comparison Exercises
+1. **Run the benchmarks** and analyze the performance trade-offs
+2. **Design a hybrid system** that uses both structures for different data types
+3. **Consider real-world scenarios**: When would you choose each structure?
+4. **Implement a simple caching layer** on top of either structure
 
-### Docker Compose
-
-All services can be started locally using `nerdctl`:
+## 🔧 Quick Start Guide
 
 ```bash
-nerdctl compose up
+# Clone and explore
+git clone <repository-url>
+cd infra-learning
+
+# Try LSM Tree (simple demo)
+cd lsm && go run ./cmd/demo
+
+# Try B-Tree (simple demo)
+cd ../btree && go run ./cmd/demo
+
+# Run comprehensive examples
+cd ../lsm && go run ./cmd/example
+cd ../btree && go run ./cmd/example
+
+# Run tests and benchmarks
+cd ../lsm && go test ./lsmtree
+cd ../btree && go test
+cd ../benchmark && go test -v && go test -bench . -benchmem
 ```
 
-This brings up the Go API, ClickHouse and the OpenTelemetry Collector configured in `docker-compose.yml`.
-The Go API exposes metrics on the port defined by `OTEL_EXPORTER_PROMETHEUS_PORT` (mapped to `9464` by default).
+## 📖 Advanced Topics (Optional)
+
+The repository focuses on core concepts, but here are areas for further exploration:
+
+- **Concurrent access**: Thread-safety and locking strategies
+- **Write-ahead logging**: Durability and crash recovery
+- **Compression**: Reducing storage overhead in SSTables
+- **Leveled compaction**: More sophisticated LSM compaction strategies
+- **B+ trees**: Leaf-linked B-trees for better range queries
+- **Distributed systems**: Partitioning and replication strategies
+
+## 📚 Additional Resources
+
+- [The Log-Structured Merge-Tree (LSM-Tree)](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.44.2782) - Original LSM paper
+- [B-Trees and Database Indexes](https://use-the-index-luke.com/sql/anatomy/the-tree) - Comprehensive B-tree guide
+- [Designing Data-Intensive Applications](https://dataintensive.net/) - Chapter 3 covers storage engines
+
+## 🚀 Additional Services
+
+The `services/` directory contains additional infrastructure examples:
+
+- **`go-api/`**: HTTP API with OpenTelemetry instrumentation and Prometheus metrics
+- **`otel-collector/`**: OpenTelemetry collector configuration
+- **`docker-compose.yml`**: Complete observability stack with ClickHouse
+
+These demonstrate how the data structures might be used in production systems with proper monitoring and observability.
